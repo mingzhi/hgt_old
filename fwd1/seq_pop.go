@@ -27,6 +27,7 @@ type SeqPop struct {
 	states string          // nucleotides
 }
 
+// Genome sequence
 type Sequence []byte
 
 // NewSeqPop: returns a SeqPop.

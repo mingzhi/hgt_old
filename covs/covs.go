@@ -24,3 +24,17 @@ func (cm *CMatrix) KS() (ks float64) {
 	ks = mean.GetResult()
 	return
 }
+
+func (cm *CMatrix) D() (m float64, v float64) {
+	mean := desc.NewMean()
+	variance := desc.NewVariance()
+	for i := 0; i < len(cm.Matrix); i++ {
+		m := float64(len(cm.Matrix[i])) / float64(cm.Length)
+		mean.Increment(m)
+		variance.Increment(m)
+	}
+
+	m = mean.GetResult()
+	v = variance.GetResult()
+	return
+}
