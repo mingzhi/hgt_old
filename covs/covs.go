@@ -29,9 +29,9 @@ func (cm *CMatrix) D() (m float64, v float64) {
 	mean := desc.NewMean()
 	variance := desc.NewVariance()
 	for i := 0; i < len(cm.Matrix); i++ {
-		m := float64(len(cm.Matrix[i])) / float64(cm.Length)
-		mean.Increment(m)
-		variance.Increment(m)
+		d := float64(len(cm.Matrix[i])) / float64(cm.Length)
+		mean.Increment(d)
+		variance.Increment(d)
 	}
 
 	m = mean.GetResult()

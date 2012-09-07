@@ -7,6 +7,7 @@ package fwd1
 import (
 	"github.com/mingzhi/gomath/random"
 	"math/rand"
+	"time"
 )
 
 // SeqPop: represents a population with full sequence
@@ -31,7 +32,7 @@ type SeqPop struct {
 type Sequence []byte
 
 // NewSeqPop: returns a SeqPop.
-func NewSeqPop(size, length int, mutation, transfer float64, fragment int, src rand.Source) (pop *SeqPop) {
+func NewSeqPop(size, length int, mutation, transfer float64, fragment int) (pop *SeqPop) {
 	// verify size and length
 	if size <= 0 || length <= 0 {
 		panic("Population size or length should be positive values!")
@@ -47,7 +48,8 @@ func NewSeqPop(size, length int, mutation, transfer float64, fragment int, src r
 	}
 
 	// create random sources
-	pop.src = src
+	seed := time.Now().UnixNano()
+	pop.src = random.NewLockedSource(rand.NewSource(seed))
 	pop.rng = rand.New(src)
 	// mutation poisson distribution: mean = mutation rate * genome length
 	pop.mPois = random.NewPoisson(pop.Mutation*float64(pop.Length), src)
