@@ -6,15 +6,12 @@ import (
 
 func Sample(genomes []Sequence, sampleSize int) (sample []Sequence) {
 	// permutation
-	for i := 0; i < len(genomes); i++ {
-		j := rand.Intn(len(genomes))
-		genomes[i], genomes[j] = genomes[j], genomes[i]
-	}
+	sampleidx := rand.Perm(len(genomes))
 
 	// sample
 	sample = make([]Sequence, sampleSize)
 	for i := 0; i < sampleSize; i++ {
-		sample[i] = genomes[i]
+		sample[i] = genomes[sampleidx[i]]
 	}
 
 	return
