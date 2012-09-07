@@ -50,11 +50,11 @@ func NewSeqPop(size, length int, mutation, transfer float64, fragment int) (pop 
 	// create random sources
 	seed := time.Now().UnixNano()
 	pop.src = random.NewLockedSource(rand.NewSource(seed))
-	pop.rng = rand.New(src)
+	pop.rng = rand.New(pop.src)
 	// mutation poisson distribution: mean = mutation rate * genome length
-	pop.mPois = random.NewPoisson(pop.Mutation*float64(pop.Length), src)
+	pop.mPois = random.NewPoisson(pop.Mutation*float64(pop.Length), pop.src)
 	// transfer poisson distribution: mean = transfer rate * genome length
-	pop.tPois = random.NewPoisson(pop.Transfer*float64(pop.Length), src)
+	pop.tPois = random.NewPoisson(pop.Transfer*float64(pop.Length), pop.src)
 
 	// nucleotides
 	pop.states = "ATGC"
