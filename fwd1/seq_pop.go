@@ -102,7 +102,7 @@ func (pop *SeqPop) generation() {
 			n++
 		} else {
 			newGenomes[i] = pop.Genomes[o]
-			used[i] = true
+			used[o] = true
 		}
 	}
 
