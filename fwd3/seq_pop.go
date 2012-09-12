@@ -2,7 +2,7 @@
 // To use it:
 // 1. create a SeqPop object using NewSeqPop by providing population Size, genome Length, Mutation rate, Transfer rate, Fragment length, and a LockedSource.
 // 2. do the evoluation using Evolve
-package fwd1
+package fwd3
 
 import (
 	"github.com/mingzhi/gomath/random"
@@ -130,12 +130,15 @@ func (pop *SeqPop) mutateGenome(idx int) {
 	count := pop.mPois.Int()
 	// for each mutation, randomly choose a position and replace it with another nucleotide.
 	for i := 0; i < count; i++ {
-		p := pop.rng.Intn(pop.Length)
-		s := pop.states[pop.rng.Intn(len(pop.states))]
-		for s == genome[p] { // loop until a random nucleotide that is different to the original one
-			s = pop.states[pop.rng.Intn(len(pop.states))]
+		p := pop.rng.Intn(pop.Length) // randomly choose a position
+		ri := pop.rng.Intn(len(pop.states))
+		if pop.states[ri] == genome[p] { // if the mutated state is same as old one
+			ri = ri + pop.rng.Intn(len(pop.states)-1) + 1
+			if ri >= len(pop.states) {
+				ri = ri - len(pop.states)
+			}
 		}
-		genome[p] = s
+		genome[p] = pop.states[ri]
 	}
 }
 

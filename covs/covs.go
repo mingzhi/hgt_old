@@ -14,17 +14,7 @@ func NewCMatrix(size, length int, matrix [][]int) (cmatrix *CMatrix) {
 	return &CMatrix{Size: size, Length: length, Matrix: matrix}
 }
 
-func (cm *CMatrix) KS() (ks float64) {
-	mean := desc.NewMean()
-	for i := 0; i < len(cm.Matrix); i++ {
-		m := float64(len(cm.Matrix[i])) / float64(cm.Length)
-		mean.Increment(m)
-	}
-
-	ks = mean.GetResult()
-	return
-}
-
+// calculate the KS and VarD.
 func (cm *CMatrix) D() (m float64, v float64) {
 	mean := desc.NewMean()
 	variance := desc.NewVariance()
