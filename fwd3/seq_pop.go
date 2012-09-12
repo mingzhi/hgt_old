@@ -1,6 +1,6 @@
 // This package use gsl randist as random source.
 // This file implements SeqPop, which contains full sequence genomes.
-package fwd2
+package fwd3
 
 import (
 	"github.com/mingzhi/gsl-cgo/randist"
@@ -73,54 +73,33 @@ func (pop *SeqPop) generation() {
 	newGenomes := make([]Sequence, pop.Size)
 
 	// wright-fisher sampling
-	ch := make(chan bool)          // channel to communicate with workers
-	n := 0                         // number of genomes for hard copying
 	used := make([]bool, pop.Size) // indicates whether the pointer of a old genome has been used
 	for i := 0; i < pop.Size; i++ {
 		o := randist.UniformRandomInt(pop.rng, pop.Size) // sample with replacement
 		if used[o] {
-			go pop.copyGenome(i, o, newGenomes, ch)
-			n++
+			newGenomes[i] = make(Sequence, pop.Length)
+			copy(newGenomes[i], pop.Genomes[o])
 		} else {
 			newGenomes[i] = pop.Genomes[o]
 			used[i] = true
 		}
 	}
 
-	// waiting for workers finishing hard genome copy
-	for i := 0; i < n; i++ {
-		<-ch
-	}
-
 	// update genomes
 	pop.Genomes = newGenomes
-}
-
-// hard copy genome (worker)
-func (pop *SeqPop) copyGenome(n, o int, newGenomes []Sequence, ch chan bool) {
-	newGenomes[n] = make(Sequence, pop.Length)
-	copy(newGenomes[n], pop.Genomes[o])
-	// tell others that I am done
-	ch <- true
 }
 
 // mutation: K2P model.
 // Each genome is independent with each other so that concurrency is implemented.
 func (pop *SeqPop) mutation() {
-	ch := make(chan bool) // channel for communicating with workers
 	// for each genome, do mutation
 	for i := 0; i < pop.Size; i++ {
-		go pop.mutateGenome(i, ch)
-	}
-
-	// waiting for worker finishing doing mutation
-	for i := 0; i < pop.Size; i++ {
-		<-ch
+		pop.mutateGenome(i)
 	}
 }
 
 // mutate one genome (atomic job)
-func (pop *SeqPop) mutateGenome(idx int, ch chan bool) {
+func (pop *SeqPop) mutateGenome(idx int) {
 	genome := pop.Genomes[idx]
 	// how many mutations in this genome (following a poisson distribution)
 	count := randist.PoissonRandomInt(pop.rng, pop.Mutation*float64(pop.Length))
@@ -133,27 +112,19 @@ func (pop *SeqPop) mutateGenome(idx int, ch chan bool) {
 		}
 		genome[p] = s
 	}
-	// tell others that I am done
-	ch <- true
 }
 
 // transfer
 // Warning: transaction (read and write) is not atomic and not safe.
 func (pop *SeqPop) transfer() {
-	ch := make(chan bool) // channel for communicating with other workers
 	// for each genome, do transfer
 	for i := 0; i < pop.Size; i++ {
-		go pop.transferGenome(i, ch)
-	}
-
-	// waiting for worker finishing their jobs
-	for i := 0; i < pop.Size; i++ {
-		<-ch
+		pop.transferGenome(i)
 	}
 }
 
 // transfer one genome (receiver)
-func (pop *SeqPop) transferGenome(idx int, ch chan bool) {
+func (pop *SeqPop) transferGenome(idx int) {
 	receiver := pop.Genomes[idx]
 
 	// how many times of homologous recombination happen.
@@ -183,6 +154,4 @@ func (pop *SeqPop) transferGenome(idx int, ch chan bool) {
 			}
 		}
 	}
-
-	ch <- true
 }

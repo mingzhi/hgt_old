@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// SeqPop: represents a population with full sequence
+// SeqPop: represents a population with full sequence genomes
 type SeqPop struct {
 	Size     int        // Population size
 	Length   int        // Genome length
