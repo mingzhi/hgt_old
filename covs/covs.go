@@ -2,6 +2,7 @@ package covs
 
 import (
 	"github.com/mingzhi/gomath/stat/desc"
+	"runtime"
 	"sort"
 )
 
@@ -35,35 +36,22 @@ func (cm *CMatrix) Cov(maxL int) (scovs, rcovs, xyPL, xsysPL, smXYPL []float64) 
 	// calculate xs and xy
 	xs := make([]int, cm.Length) // total counts of each column.
 	xy := make([]int, maxL)      // total counts of cocurrence.
-	// sort each row
-	for i := 0; i < cm.Size; i++ {
-		sort.Ints(cm.Matrix[i])
+	// number of cpu
+	ncpu := runtime.GOMAXPROCS(0)
+	ch := make(chan result)
+	for i := 0; i < ncpu; i++ {
+		begin := i * cm.Size / ncpu
+		end := (i + 1) * cm.Size / ncpu
+		go cm.covPart(begin, end, maxL, ch)
 	}
-	// loop
-	for i := 0; i < cm.Size; i++ {
-		row := cm.Matrix[i]
-		for xi, xv := range row {
-			// add xs
-			xs[xv]++
-			// add xy
-			for yi := 0; yi < len(row); {
-				yv := row[yi]
-				if yv < xv { // deal with circle genome
-					if yv+cm.Length-xv < maxL {
-						xy[yv+cm.Length-xv]++
-						yi++
-					} else {
-						yi = xi
-					}
-				} else {
-					if yv-xv < maxL {
-						xy[yv-xv]++
-						yi++
-					} else {
-						break
-					}
-				}
-			}
+	// collect results
+	for i := 0; i < ncpu; i++ {
+		r := <-ch
+		for j := 0; j < cm.Length; j++ {
+			xs[j] += r.xs[j]
+		}
+		for j := 0; j < maxL; j++ {
+			xy[j] += r.xy[j]
 		}
 	}
 
@@ -113,4 +101,48 @@ func (cm *CMatrix) Cov(maxL int) (scovs, rcovs, xyPL, xsysPL, smXYPL []float64) 
 	}
 
 	return
+}
+
+type result struct {
+	xs []int
+	xy []int
+}
+
+func (cm *CMatrix) covPart(begin, end, maxL int, ch chan result) {
+	// calculate xs and xy
+	xs := make([]int, cm.Length) // total counts of each column.
+	xy := make([]int, maxL)      // total counts of cocurrence.
+	// sort each row
+	for i := begin; i < end; i++ {
+		sort.Ints(cm.Matrix[i])
+	}
+	// loop
+	for i := begin; i < end; i++ {
+		row := cm.Matrix[i]
+		for xi, xv := range row {
+			// add xs
+			xs[xv]++
+			// add xy
+			for yi := 0; yi < len(row); {
+				yv := row[yi]
+				if yv < xv { // deal with circle genome
+					if yv+cm.Length-xv < maxL {
+						xy[yv+cm.Length-xv]++
+						yi++
+					} else {
+						yi = xi
+					}
+				} else {
+					if yv-xv < maxL {
+						xy[yv-xv]++
+						yi++
+					} else {
+						break
+					}
+				}
+			}
+		}
+	}
+
+	ch <- result{xs: xs, xy: xy}
 }

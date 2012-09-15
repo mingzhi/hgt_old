@@ -4,6 +4,7 @@ import (
 	"github.com/mingzhi/gomath/stat/desc"
 	"math"
 	"math/rand"
+	"runtime"
 	"testing"
 )
 
@@ -37,6 +38,7 @@ func TestCov(t *testing.T) {
 
 func BenchmarkCov(bench *testing.B) {
 	bench.StopTimer()
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	a := 0.9
 	b := 0.3
 	length := 1000
