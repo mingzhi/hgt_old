@@ -18,11 +18,11 @@ func NewCMatrix(size, length int, matrix [][]int) (cmatrix *CMatrix) {
 }
 
 // calculate KS (math formula)
-func CalculatKS(n, a int, m, t float64, kin int) float64 {
-	u := 2.0 * (m + t)
-	r := float64(kin) * t / m
-	ustar := 1.0 - math.Exp(-u*(1.0+1.0/float64(a-1)*(1.0+r)))
-	return float64(n) * ustar / (r + float64(a)/float64(a-1)*(float64(n)*ustar+1.0-ustar))
+func CalculateKS(n int, u float64, r float64, l int, a int) float64 {
+	ut := 2.0 * (u + r*float64(l)) // probability of total events
+	ratio := float64(l) * r / u    // ratio between transfer and mutation rate
+	ustar := 1.0 - math.Exp(-ut*(1.0+1.0/(float64(a-1)*(1.0+ratio))))
+	return float64(n) * ustar / (ratio + float64(a)/float64(a-1)*(float64(n)*ustar+1.0-ustar))
 }
 
 // calculate the KS and VarD.

@@ -1,6 +1,7 @@
 package covs
 
 import (
+	"fmt"
 	"github.com/mingzhi/gomath/stat/desc"
 	"math"
 	"math/rand"
@@ -33,6 +34,44 @@ func TestCov(t *testing.T) {
 	prec := 1e-6
 	if math.Abs(rmean.GetResult()) > prec {
 		t.Errorf("Expect average of rcovs as 0.0, but got %f", rmean.GetResult())
+	}
+}
+
+func TestCalculateKS(t *testing.T) {
+	fmt.Println("--Population parameters:")
+	var (
+		n         int     // population size
+		u         float64 // mutation rate
+		r         float64 // transfer rate
+		a         int     // number of states
+		l         int     // fragment length
+		ks        float64
+		expected  float64
+		tolerance float64
+	)
+	n = 1000
+	u = 1e-4
+	r = 1e-4
+	a = 4
+	l = 100
+	tolerance = 1e-5
+	fmt.Printf("---Population size: %d\n", n)
+	fmt.Printf("---Mutation rate: %f\n", u)
+	fmt.Printf("---Transfer rate: %f\n", r)
+	fmt.Printf("---Character number: %d\n", a)
+	fmt.Printf("---Transferred fragment: %d\n", l)
+	ks = CalculateKS(n, u, r, l, a)
+	expected = 0.15667
+	if math.Abs(ks-expected) > tolerance {
+		t.Errorf("ks = %g, but expected %g", ks, expected)
+	}
+
+	// no transfer
+	r = 0.0
+	ks = CalculateKS(n, u, r, l, a)
+	expected = 0.157911
+	if math.Abs(ks-expected) > tolerance {
+		t.Errorf("ks = %g, but expected %g", ks, expected)
 	}
 }
 
