@@ -16,6 +16,8 @@ type SeqPop struct {
 
 	Genomes []Sequence // genomes
 
+	NumOfGens int // number of generations
+
 	states string // nucleotides
 
 	// random variables
@@ -56,7 +58,7 @@ func NewSeqPop(size, length int, mutation, transfer float64, fragment int) *SeqP
 	// mutation events and transfer events are independent poisson distribution.
 	// therefore, the total number of events are also following poission distrubtion
 	// with mean = (u + r) * L * N
-	mean := float64(pop.Size+pop.Length) * (pop.Mutation + pop.Transfer)
+	mean := float64(pop.Size*pop.Length) * (pop.Mutation + pop.Transfer)
 	pop.pois = random.NewPoisson(mean, pop.src)
 
 	// create genomes
@@ -83,6 +85,7 @@ func NewSeqPop(size, length int, mutation, transfer float64, fragment int) *SeqP
 func (pop *SeqPop) Evolve() {
 	pop.reproduce()
 	pop.manipulate()
+	pop.NumOfGens++
 }
 
 // Wright-Fisher generation

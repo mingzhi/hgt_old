@@ -2,6 +2,7 @@ package covs
 
 import (
 	"github.com/mingzhi/gomath/stat/desc"
+	"math"
 	"runtime"
 	"sort"
 )
@@ -14,6 +15,14 @@ type CMatrix struct {
 
 func NewCMatrix(size, length int, matrix [][]int) (cmatrix *CMatrix) {
 	return &CMatrix{Size: size, Length: length, Matrix: matrix}
+}
+
+// calculate KS (math formula)
+func CalculatKS(n, a int, m, t float64, kin int) float64 {
+	u := 2.0 * (m + t)
+	r := float64(kin) * t / m
+	ustar := 1.0 - math.Exp(-u*(1.0+1.0/float64(a-1)*(1.0+r)))
+	return float64(n) * ustar / (r + float64(a)/float64(a-1)*(float64(n)*ustar+1.0-ustar))
 }
 
 // calculate the KS and VarD.
