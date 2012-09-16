@@ -33,7 +33,7 @@ func TestCov(t *testing.T) {
 	}
 	prec := 1e-6
 	if math.Abs(rmean.GetResult()) > prec {
-		t.Errorf("Expect average of rcovs as 0.0, but got %f", rmean.GetResult())
+		t.Errorf("Expect average of rcovs as 0.0, but got %g", rmean.GetResult())
 	}
 }
 

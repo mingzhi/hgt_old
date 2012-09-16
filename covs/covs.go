@@ -40,6 +40,21 @@ func (cm *CMatrix) D() (m float64, v float64) {
 	return
 }
 
+// calculate the KS and VarD.
+func (cm *CMatrix) DPartial() (m float64, v float64) {
+	mean := desc.NewMean()
+	variance := desc.NewVariance()
+	for i := 0; i < len(cm.Matrix); i++ {
+		d := float64(len(cm.Matrix[i])) / float64(cm.Length)
+		mean.Increment(d)
+		variance.Increment(d)
+	}
+
+	m = mean.GetResult()
+	v = variance.GetResult()
+	return
+}
+
 // Calculate the covs.
 func (cm *CMatrix) Cov(maxL int) (scovs, rcovs, xyPL, xsysPL, smXYPL []float64) {
 	// calculate xs and xy
@@ -51,7 +66,144 @@ func (cm *CMatrix) Cov(maxL int) (scovs, rcovs, xyPL, xsysPL, smXYPL []float64) 
 	for i := 0; i < ncpu; i++ {
 		begin := i * cm.Size / ncpu
 		end := (i + 1) * cm.Size / ncpu
-		go cm.covPart(begin, end, maxL, ch)
+		go cm.covSome(begin, end, maxL, ch)
+	}
+	// collect results
+	for i := 0; i < ncpu; i++ {
+		r := <-ch
+		for j := 0; j < cm.Length; j++ {
+			xs[j] += r.xs[j]
+		}
+		for j := 0; j < maxL; j++ {
+			xy[j] += r.xy[j]
+		}
+	}
+
+	// calculate xsP (frequency of xs)
+	xsP := make([]float64, len(xs))
+	for i := 0; i < len(xs); i++ {
+		xsP[i] = float64(xs[i]) / float64(cm.Size)
+	}
+
+	// calculate xyP (frequence of xy)
+	xyP := make([]float64, len(xy))
+	for i := 0; i < len(xy); i++ {
+		xyP[i] = float64(xy[i]) / float64(cm.Size*(cm.Length-i))
+	}
+
+	xsysP := make([]float64, maxL) // <X.Y>
+	smXsP := make([]float64, maxL) // sum(X)
+	smYsP := make([]float64, maxL) // sum(Y)
+	for l := 0; l < maxL; l++ {
+		for x := 0; x < cm.Length-l; x++ {
+			xsysP[l] += xsP[x] * xsP[x+l]
+			smXsP[l] += xsP[x]
+			smYsP[l] += xsP[x+l]
+		}
+		xsysP[l] /= float64(cm.Length - l)
+		smXsP[l] /= float64(cm.Length - l)
+		smYsP[l] /= float64(cm.Length - l)
+	}
+
+	scovs = make([]float64, maxL)
+	rcovs = make([]float64, maxL)
+	xyPL = make([]float64, maxL)
+	xsysPL = make([]float64, maxL)
+	smXYPL = make([]float64, maxL)
+	for l := 0; l < maxL; l++ {
+		scovs[l] = xyP[l] - xsysP[l]
+		rcovs[l] = xsysP[l] - smXsP[l]*smYsP[l]
+		xyPL[l] = xyP[l]
+		xsysPL[l] = xsysP[l]
+		smXYPL[l] = smXsP[l] * smYsP[l]
+	}
+
+	return
+}
+
+type result struct {
+	xs []int
+	xy []int
+}
+
+func (cm *CMatrix) covCircleSome(begin, end, maxL int, ch chan result) {
+	// calculate xs and xy
+	xs := make([]int, cm.Length) // total counts of each column.
+	xy := make([]int, maxL)      // total counts of cocurrence.
+	// sort each row
+	for i := begin; i < end; i++ {
+		sort.Ints(cm.Matrix[i])
+	}
+	// loop
+	for i := begin; i < end; i++ {
+		row := cm.Matrix[i]
+		for xi, xv := range row {
+			// add xs
+			xs[xv]++
+			// add xy
+			for yi := 0; yi < len(row); {
+				yv := row[yi]
+				if yv < xv { // deal with circle genome
+					if yv+cm.Length-xv < maxL {
+						xy[yv+cm.Length-xv]++
+						yi++
+					} else {
+						yi = xi
+					}
+				} else {
+					if yv-xv < maxL {
+						xy[yv-xv]++
+						yi++
+					} else {
+						break
+					}
+				}
+			}
+		}
+	}
+
+	ch <- result{xs: xs, xy: xy}
+}
+
+func (cm *CMatrix) covSome(begin, end, maxL int, ch chan result) {
+	// calculate xs and xy
+	xs := make([]int, cm.Length) // total counts of each column.
+	xy := make([]int, maxL)      // total counts of cocurrence.
+
+	// loop
+	for i := begin; i < end; i++ {
+		row := cm.Matrix[i]
+		sort.Ints(row)
+		for xi, xv := range row {
+			// add xs
+			xs[xv]++
+			// add xy
+			for yi := xi; yi < len(row); yi++ {
+				yv := row[yi]
+				if yv-xv < maxL {
+					xy[yv-xv]++
+				} else {
+					break
+				}
+			}
+		}
+	}
+
+	ch <- result{xs: xs, xy: xy}
+}
+
+// Calculate the covs.
+func (cm *CMatrix) CovCircle(maxL int) (scovs, rcovs, xyPL, xsysPL, smXYPL []float64) {
+	// calculate xs and xy
+	xs := make([]int, cm.Length) // total counts of each column.
+	xy := make([]int, maxL)      // total counts of cocurrence.
+	// number of cpu
+	ncpu := runtime.GOMAXPROCS(0)
+	ch := make(chan result)
+	for i := 0; i < ncpu; i++ {
+		begin := i * cm.Size / ncpu
+		end := (i + 1) * cm.Size / ncpu
+		go cm.covCirclePart(begin, end, maxL, ch)
 	}
 	// collect results
 	for i := 0; i < ncpu; i++ {
@@ -112,12 +264,7 @@ func (cm *CMatrix) Cov(maxL int) (scovs, rcovs, xyPL, xsysPL, smXYPL []float64) 
 	return
 }
 
-type result struct {
-	xs []int
-	xy []int
-}
-
-func (cm *CMatrix) covPart(begin, end, maxL int, ch chan result) {
+func (cm *CMatrix) covCirclePart(begin, end, maxL int, ch chan result) {
 	// calculate xs and xy
 	xs := make([]int, cm.Length) // total counts of each column.
 	xy := make([]int, maxL)      // total counts of cocurrence.
