@@ -46,7 +46,7 @@ func TestEvolve(t *testing.T) {
 			ksmean.Increment(ks)
 			ksvar.Increment(ks)
 		}
-		expectedKS = covs.CalculatKS(size, 4, mutation, transfer, fragment)
+		expectedKS = covs.CalculateKS(size, mutation, transfer, fragment, 4)
 		tolerance = math.Sqrt(ksvar.GetResult())
 		if math.Abs(ksmean.GetResult()-expectedKS) > tolerance {
 			if numofgens < 10000 {
@@ -76,7 +76,7 @@ func TestEvolve(t *testing.T) {
 			ksmean.Increment(ks)
 			ksvar.Increment(ks)
 		}
-		expectedKS = covs.CalculatKS(size, 4, mutation, transfer, fragment)
+		expectedKS = covs.CalculateKS(size, mutation, transfer, fragment, 4)
 		tolerance = math.Sqrt(ksvar.GetResult())
 		if math.Abs(ksmean.GetResult()-expectedKS) > tolerance {
 			if numofgens < 10000 {
@@ -106,7 +106,7 @@ func TestEvolve(t *testing.T) {
 			ksmean.Increment(ks)
 			ksvar.Increment(ks)
 		}
-		expectedKS = covs.CalculatKS(size, 4, mutation, transfer, fragment)
+		expectedKS = covs.CalculateKS(size, mutation, transfer, fragment, 4)
 		tolerance = math.Sqrt(ksvar.GetResult())
 		if math.Abs(ksmean.GetResult()-expectedKS) > tolerance {
 			if numofgens < 10000 {
