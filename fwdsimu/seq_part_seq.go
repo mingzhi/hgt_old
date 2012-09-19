@@ -125,12 +125,9 @@ func (pop *SeqPartPop) mutate() {
 	g := pop.rng.Intn(pop.Size)
 	// choose a position
 	l := pop.rng.Intn(pop.Length)
-	ri := pop.rng.Intn(len(pop.states))      // randomly find a idx of the mutated character in pop.states
-	if pop.states[ri] == pop.Genomes[g][l] { // if the mutated character is same as the old one
-		ri = ri + pop.rng.Intn(len(pop.states)-1) + 1 // then shuffle 3 positions, so that we don't need for loop.
-		if ri >= len(pop.states) {
-			ri = ri - len(pop.states)
-		}
+	ri := pop.rng.Intn(len(pop.states))       // randomly find a idx of the mutated character in pop.states
+	for pop.states[ri] == pop.Genomes[g][l] { // make sure to change to a different state
+		ri = pop.rng.Intn(len(pop.states))
 	}
 
 	// update the character.
@@ -171,6 +168,8 @@ func (pop *SeqPartPop) transfer() {
 
 	// do the transfer
 	for i := begin; i < end; i++ {
-		pop.Genomes[g][i] = pop.Genomes[d][i]
+		if pop.Genomes[g][i] != pop.Genomes[d][i] {
+			pop.Genomes[g][i] = pop.Genomes[d][i]
+		}
 	}
 }
