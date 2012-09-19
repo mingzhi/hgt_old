@@ -146,7 +146,7 @@ func (pop *SeqPartPop) transfer() {
 		d = pop.rng.Intn(pop.Size)
 	}
 
-	// choose a position
+	// choose a start position
 	l := pop.rng.Intn(pop.Length+pop.Fragment) - pop.Fragment
 
 	// determin the boundaries
@@ -161,7 +161,7 @@ func (pop *SeqPartPop) transfer() {
 	// end of the transferred fragment
 	end := pop.Length
 	if l+pop.Fragment < pop.Length {
-		end = pop.Fragment
+		end = l + pop.Fragment
 	} else {
 		end = pop.Length
 	}
