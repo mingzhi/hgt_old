@@ -1,4 +1,4 @@
-package fwdsimu
+package fwd
 
 import (
 	"fmt"
