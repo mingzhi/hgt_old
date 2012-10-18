@@ -40,21 +40,6 @@ func (cm *CMatrix) D() (m float64, v float64) {
 	return
 }
 
-// calculate the KS and VarD.
-func (cm *CMatrix) DPartial() (m float64, v float64) {
-	mean := desc.NewMean()
-	variance := desc.NewVariance()
-	for i := 0; i < len(cm.Matrix); i++ {
-		d := float64(len(cm.Matrix[i])) / float64(cm.Length)
-		mean.Increment(d)
-		variance.Increment(d)
-	}
-
-	m = mean.GetResult()
-	v = variance.GetResult()
-	return
-}
-
 // Calculate the covs.
 func (cm *CMatrix) Cov(maxL int) (scovs, rcovs, xyPL, xsysPL, smXYPL []float64) {
 	// calculate xs and xy

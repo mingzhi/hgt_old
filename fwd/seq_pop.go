@@ -1,7 +1,9 @@
 package fwd
 
 import (
+	"encoding/json"
 	"github.com/mingzhi/gomath/random"
+	"log"
 	"math/rand"
 	"time"
 )
@@ -33,11 +35,11 @@ type Sequence []byte
 func NewSeqPop(size, length int, mutation, transfer float64, fragment int) *SeqPop {
 	// verify population size and genome length
 	if size <= 0 || length <= 0 {
-		panic("Population size or genome length should be positive!")
+		log.Panic("Population size or genome length should be positive!")
 	}
 	// verify transfer rate and transferred fragment
 	if transfer > 0 && fragment <= 0 {
-		panic("Transferred fragment should be positive when transfer rate > 0!")
+		log.Panic("Transferred fragment should be positive when transfer rate > 0!")
 	}
 
 	// construct a population with parameters
@@ -63,7 +65,7 @@ func NewSeqPop(size, length int, mutation, transfer float64, fragment int) *SeqP
 
 	// create genomes
 	// randomly create a parent sequence
-	pop.states = "ATGC" // typical nucleotides, "ATGC"
+	pop.states = "atgc" // typical nucleotides, "ATGC"
 	refseq := make(Sequence, pop.Length)
 	for i := 0; i < len(refseq); i++ {
 		refseq[i] = pop.states[pop.rng.Intn(len(pop.states))] // randomly assign a character
@@ -88,14 +90,38 @@ func (pop *SeqPop) Evolve() {
 	pop.NumOfGens++
 }
 
+// GetGenomes: return genome sequences
+func (pop *SeqPop) GetGenomes() []Sequence {
+	return pop.Genomes
+}
+
+// GetLength: return genome length
+func (pop *SeqPop) GetLength() int {
+	return pop.Length
+}
+
+// GetTime: return evolved time
+func (pop *SeqPop) GetTime() int {
+	return pop.NumOfGens
+}
+
+// Json: return the entire population in JSON format
+func (pop *SeqPop) Json() []byte {
+	b, err := json.Marshal(pop)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return b
+}
+
 // Wright-Fisher generation
 func (pop *SeqPop) reproduce() {
 	newGenomes := make([]Sequence, pop.Size)
 	used := make([]bool, pop.Size) // records used genomes
-	for i := 0; i < pop.Size; i++ {
-		n := i                      // new genome index
-		o := pop.rng.Intn(pop.Size) // randomly generate a old genome index
-		if used[o] {                // this old genome has been reassigned
+	for n := 0; n < pop.Size; n++ {
+		o := pop.rng.Intn(pop.Size) // randomly select a parent
+		if used[o] {
 			// do hard copy
 			newGenomes[n] = make(Sequence, pop.Length)
 			copy(newGenomes[n], pop.Genomes[o])
@@ -110,7 +136,7 @@ func (pop *SeqPop) reproduce() {
 	pop.Genomes = newGenomes
 }
 
-// mutation and transfer
+// evolutionary operators: mutation and transfer
 func (pop *SeqPop) manipulate() {
 	k := pop.pois.Int() // total number of events
 	// given k, the number of mutations or transfers are following Binormial distribution.
@@ -118,21 +144,21 @@ func (pop *SeqPop) manipulate() {
 	for i := 0; i < k; i++ {
 		// determine a genome
 		g := pop.rng.Intn(pop.Size)
-		// determine a position
-		l := pop.rng.Intn(pop.Length)
 		// determine whether this event is a mutation or transfer by flipping a coin
-		r := pop.rng.Float64()
-		if r < pop.Mutation/(pop.Mutation+pop.Transfer) { // mutation event: u / (u + r)
-			pop.mutate(g, l)
-		} else { // transfer event: r / (u + r)
-			pop.transfer(g, l)
+		ratio := pop.Mutation / (pop.Mutation + pop.Transfer) // the ratio of mutation
+		r := pop.rng.Float64()                                // randomly produce a probability
+		if r <= ratio {                                       // determin whether is a mutation or transfer
+			pop.mutate(g)
+		} else {
+			pop.transfer(g)
 		}
 	}
 }
 
 // mutation operator
-// parameters: g is genome idx, and l is position idx.
-func (pop *SeqPop) mutate(g, l int) {
+// parameters: g is genome idx.
+func (pop *SeqPop) mutate(g int) {
+	l := pop.rng.Intn(pop.Length)            // randomly determine a position
 	ri := pop.rng.Intn(len(pop.states))      // randomly find a idx of the mutated character in pop.states
 	if pop.states[ri] == pop.Genomes[g][l] { // if the mutated character is same as the old one
 		ri = ri + pop.rng.Intn(len(pop.states)-1) + 1 // then shuffle 3 positions, so that we don't need for loop.
@@ -146,8 +172,8 @@ func (pop *SeqPop) mutate(g, l int) {
 }
 
 // transfer operator
-// parameter: g is genome idx, and l is position idx.
-func (pop *SeqPop) transfer(g, l int) {
+// parameter: g is genome idx.
+func (pop *SeqPop) transfer(g int) {
 	// randomly choose a donor
 	d := pop.rng.Intn(pop.Size)
 	for d == g {
