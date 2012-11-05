@@ -1,7 +1,8 @@
 package coals
 
 import (
-	"math/rand"
+	"bitbucket.org/mingzhi/gsl/randist"
+	"encoding/json"
 	"sort"
 )
 
@@ -19,7 +20,7 @@ type WFPopulation struct {
 	TransferLength int     // transfer fragment length
 	history        *EvolutionHistory
 
-	seed int64 // random source seed
+	rng *randist.RNG
 }
 
 func NewWFPopulation(size, sample, length int, mutation, transfer float64, tract int) *WFPopulation {
@@ -30,8 +31,8 @@ func NewWFPopulation(size, sample, length int, mutation, transfer float64, tract
 		MutationRate:   mutation,
 		TransferRate:   transfer,
 		TransferLength: tract,
-		seed:           1,
 	}
+	wf.rng = randist.NewRNG(randist.MT19937)
 	wf.history = NewEvolutionHistory(sample, length)
 	return wf
 }
@@ -40,9 +41,17 @@ func (w *WFPopulation) GetHistory() *EvolutionHistory {
 	return w.history
 }
 
-func (w *WFPopulation) Seed(seed int64) {
-	w.seed = seed
-	rand.Seed(seed)
+func (w *WFPopulation) Seed(seed int) {
+	w.rng.SetSeed(seed)
+}
+
+func (w *WFPopulation) Json() []byte {
+	b, err := json.Marshal(w)
+	if err != nil {
+		panic(err)
+	}
+
+	return b
 }
 
 type Fragment struct {

@@ -1,8 +1,7 @@
 package coals
 
 import (
-	"github.com/mingzhi/gomath/random"
-	"math/rand"
+	"bitbucket.org/mingzhi/gsl/randist"
 )
 
 const (
@@ -11,12 +10,13 @@ const (
 
 func (w *WFPopulation) Fortrace() (seqMap map[int][]byte) {
 	seqMap = make(map[int][]byte)
-	for _, event := range w.history.Events {
+	for ei := len(w.history.Events) - 1; ei >= 0; ei-- {
+		event := w.history.Events[ei]
 		if event.Type == CoalescenceEvent {
 			a := event.Participants[0] // just one participant, the ancestor
 			seq, yes := seqMap[a]
 			if !yes {
-				seq = randomGenerateSequence(w.GenomeLength)
+				seq = randomGenerateSequence(w.GenomeLength, w.rng)
 			}
 			b := w.history.Tree[a].Children[0]
 			c := w.history.Tree[a].Children[1]
@@ -41,32 +41,31 @@ func (w *WFPopulation) Fortrace() (seqMap map[int][]byte) {
 			c := w.history.Tree[event.Participants[0]].Children[0]
 			seqMap[c] = seqC
 		}
-		mutateAll(seqMap, event.Time*float64(w.Size), w.MutationRate, w.GenomeLength, w.seed)
+		lambda := event.Time * w.MutationRate * float64(w.Size) * float64(w.GenomeLength)
+		mutateAll(seqMap, lambda, w.GenomeLength, w.rng)
 	}
 
 	return
 }
 
-func mutateAll(seqMap map[int][]byte, t, u float64, l int, seed int64) {
-	lambda := t * u * float64(l)
-	poisson := random.NewPoisson(lambda, rand.NewSource(seed))
+func mutateAll(seqMap map[int][]byte, lambda float64, l int, rng *randist.RNG) {
+	count := randist.PoissonRandomInt(rng, lambda)
 	for _, seq := range seqMap {
-		count := poisson.Int()
 		for i := 0; i < count; i++ {
-			idx := rand.Intn(l)
-			a := NucleicAcids[rand.Intn(len(NucleicAcids))]
+			idx := randist.UniformRandomInt(rng, l)
+			a := NucleicAcids[randist.UniformRandomInt(rng, len(NucleicAcids))]
 			for a == seq[idx] {
-				a = NucleicAcids[rand.Intn(len(NucleicAcids))]
+				a = NucleicAcids[randist.UniformRandomInt(rng, len(NucleicAcids))]
 			}
 			seq[idx] = a
 		}
 	}
 }
 
-func randomGenerateSequence(length int) (seq []byte) {
+func randomGenerateSequence(length int, rng *randist.RNG) (seq []byte) {
 	seq = make([]byte, length)
 	for i, _ := range seq {
-		seq[i] = NucleicAcids[rand.Intn(len(NucleicAcids))]
+		seq[i] = NucleicAcids[randist.UniformRandomInt(rng, len(NucleicAcids))]
 	}
 	return
 }

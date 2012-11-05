@@ -1,37 +1,28 @@
 package coals
 
 import (
-	"math/rand"
+	"bitbucket.org/mingzhi/gsl/randist"
 )
 
 func (w *WFPopulation) Backtrace() {
-	w.backward()
-}
-
-func (w *WFPopulation) backward() {
-	// determine event type and time
-	etype, etime := w.nextEvent()
-
-	// based on the type of event, backward
-	if etype == CoalescenceEvent {
-		// do coalescence
-		ancestor := w.coalescent()
-		// iterate until only one node left in the pool
-		if len(w.history.CurrentPool) > 1 {
-			w.backward()
+	for {
+		if len(w.history.CurrentPool) <= 1 {
+			break
 		}
-		// create event node
-		event := EventNode{Type: etype, Time: etime, Participants: []int{ancestor}}
-		w.history.Events = append(w.history.Events, event)
-	} else {
-		ancestors := w.transfer()
-		// iterate until only one node left in the pool
-		if len(w.history.CurrentPool) > 1 {
-			w.backward()
+		etype, etime := w.nextEvent()
+		// based on the type of event, backward
+		if etype == CoalescenceEvent {
+			// do coalescence
+			ancestor := w.coalescent()
+			// create event node
+			event := EventNode{Type: etype, Time: etime, Participants: []int{ancestor}}
+			w.history.Events = append(w.history.Events, event)
+		} else {
+			ancestors := w.transfer()
+			// create event node
+			event := EventNode{Type: etype, Time: etime, Participants: ancestors}
+			w.history.Events = append(w.history.Events, event)
 		}
-		// create event node
-		event := EventNode{Type: etype, Time: etime, Participants: ancestors}
-		w.history.Events = append(w.history.Events, event)
 	}
 }
 
@@ -40,9 +31,9 @@ func (w *WFPopulation) nextEvent() (eventType int, eventTime float64) {
 	k := float64(len(w.history.CurrentPool))
 	p := 2.0 * w.TransferRate * float64(w.Size)
 	l := (k*p + k*(k-1.0)) / 2.0
-	v := rand.ExpFloat64() / l
+	v := randist.ExponentialRandomFloat64(w.rng, 1.0/l)
 	eventTime = v
-	r := rand.Float64()
+	r := randist.UniformRandomFloat64(w.rng)
 	if r < p/(k-1.0+p) {
 		eventType = TransferEvent
 	} else {
@@ -54,10 +45,10 @@ func (w *WFPopulation) nextEvent() (eventType int, eventTime float64) {
 // do coalescent
 func (w *WFPopulation) coalescent() int {
 	// randomly choose two nodes
-	a := w.history.CurrentPool[rand.Intn(len(w.history.CurrentPool))]
-	b := w.history.CurrentPool[rand.Intn(len(w.history.CurrentPool))]
+	a := w.history.CurrentPool[randist.UniformRandomInt(w.rng, len(w.history.CurrentPool))]
+	b := w.history.CurrentPool[randist.UniformRandomInt(w.rng, len(w.history.CurrentPool))]
 	for a == b {
-		b = w.history.CurrentPool[rand.Intn(len(w.history.CurrentPool))]
+		b = w.history.CurrentPool[randist.UniformRandomInt(w.rng, len(w.history.CurrentPool))]
 	}
 
 	aTreeNode := w.history.Tree[a]
@@ -85,9 +76,9 @@ func (w *WFPopulation) coalescent() int {
 // do transfer
 func (w *WFPopulation) transfer() (parents []int) {
 	// randomly choose a node
-	c := w.history.CurrentPool[rand.Intn(len(w.history.CurrentPool))]
+	c := w.history.CurrentPool[randist.UniformRandomInt(w.rng, len(w.history.CurrentPool))]
 	// tranferring fragment
-	begin := rand.Intn(w.GenomeLength)
+	begin := randist.UniformRandomInt(w.rng, w.GenomeLength)
 	end := begin + w.TransferLength
 	if end < w.GenomeLength {
 		amA, amB := Split(w.history.Tree[c].Genome, begin, end)
@@ -105,7 +96,7 @@ func (w *WFPopulation) transfer() (parents []int) {
 			parents = append(parents, len(w.history.Tree)-1)
 		}
 	} else {
-		amB, amA := Split(w.history.Tree[c].Genome, end-w.GenomeLength, begin)
+		amB, amA := Split(w.history.Tree[c].Genome, end-w.GenomeLength+1, begin-1)
 		if len(amA) != 0 {
 			genome := amA
 			children := []int{c}
