@@ -49,8 +49,8 @@ func (w *WFPopulation) Fortrace() (seqMap map[int][]byte) {
 }
 
 func mutateAll(seqMap map[int][]byte, lambda float64, l int, rng *randist.RNG) {
-	count := randist.PoissonRandomInt(rng, lambda)
 	for _, seq := range seqMap {
+		count := randist.PoissonRandomInt(rng, lambda)
 		for i := 0; i < count; i++ {
 			idx := randist.UniformRandomInt(rng, l)
 			a := NucleicAcids[randist.UniformRandomInt(rng, len(NucleicAcids))]
