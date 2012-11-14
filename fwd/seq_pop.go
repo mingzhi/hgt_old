@@ -1,11 +1,9 @@
 package fwd
 
 import (
+	"bitbucket.org/mingzhi/gsl/randist"
 	"encoding/json"
-	"github.com/mingzhi/gomath/random"
 	"log"
-	"math/rand"
-	"time"
 )
 
 // A population contains full sequence genomes
@@ -20,12 +18,10 @@ type SeqPop struct {
 
 	NumOfGens int // number of generations
 
-	states string // nucleotides
+	states int // nucleotides
 
-	// random variables
-	src  rand.Source     // random source
-	rng  *rand.Rand      // random number generator
-	pois *random.Poisson // poisson sampling
+	// random source
+	rng *randist.RNG
 }
 
 // full sequence genome
@@ -52,23 +48,14 @@ func NewSeqPop(size, length int, mutation, transfer float64, fragment int) *SeqP
 	}
 
 	// create random sources
-	// use math/rand source
-	seed := time.Now().UnixNano() // use time now as a seed
-	pop.src = rand.NewSource(seed)
-	pop.rng = rand.New(pop.src)
-	// determin poisson lambda (expected mean)
-	// mutation events and transfer events are independent poisson distribution.
-	// therefore, the total number of events are also following poission distrubtion
-	// with mean = (u + r) * L * N
-	mean := float64(pop.Size*pop.Length) * (pop.Mutation + pop.Transfer)
-	pop.pois = random.NewPoisson(mean, pop.src)
+	pop.rng = randist.NewRNG(randist.MT19937)
 
 	// create genomes
 	// randomly create a parent sequence
-	pop.states = "atgc" // typical nucleotides, "ATGC"
+	pop.states = 4 // typical nucleotides, "ATGC"
 	refseq := make(Sequence, pop.Length)
 	for i := 0; i < len(refseq); i++ {
-		refseq[i] = pop.states[pop.rng.Intn(len(pop.states))] // randomly assign a character
+		refseq[i] = byte(randist.UniformRandomInt(pop.rng, pop.states)) // randomly assign a character
 	}
 	// copy the parent sequence to every genomes
 	pop.Genomes = make([]Sequence, pop.Size)
@@ -78,6 +65,11 @@ func NewSeqPop(size, length int, mutation, transfer float64, fragment int) *SeqP
 	}
 
 	return &pop
+}
+
+// set seed
+func (s *SeqPop) Seed(seed int) {
+	s.rng.SetSeed(seed)
 }
 
 // Evolve: do one generation of population evolution, which includes:
@@ -120,7 +112,7 @@ func (pop *SeqPop) reproduce() {
 	newGenomes := make([]Sequence, pop.Size)
 	used := make([]bool, pop.Size) // records used genomes
 	for n := 0; n < pop.Size; n++ {
-		o := pop.rng.Intn(pop.Size) // randomly select a parent
+		o := randist.UniformRandomInt(pop.rng, pop.Size) // randomly select a parent
 		if used[o] {
 			// do hard copy
 			newGenomes[n] = make(Sequence, pop.Length)
@@ -138,61 +130,53 @@ func (pop *SeqPop) reproduce() {
 
 // evolutionary operators: mutation and transfer
 func (pop *SeqPop) manipulate() {
-	k := pop.pois.Int() // total number of events
+	// calculate the number of events, which is poisson distribution
+	lambda := float64(pop.Size) * float64(pop.Length) * (pop.Mutation + pop.Transfer)
+	k := randist.PoissonRandomInt(pop.rng, lambda)
 	// given k, the number of mutations or transfers are following Binormial distribution.
 	// therefore, we can do k times of Bernoulli test
 	for i := 0; i < k; i++ {
-		// determine a genome
-		g := pop.rng.Intn(pop.Size)
-		// determine whether this event is a mutation or transfer by flipping a coin
+		// determine whether this event is a mutation or transfer
 		ratio := pop.Mutation / (pop.Mutation + pop.Transfer) // the ratio of mutation
-		r := pop.rng.Float64()                                // randomly produce a probability
+		r := randist.UniformRandomFloat64(pop.rng)            // randomly produce a probability
 		if r <= ratio {                                       // determin whether is a mutation or transfer
-			pop.mutate(g)
+			pop.mutate()
 		} else {
-			pop.transfer(g)
+			pop.transfer()
 		}
 	}
 }
 
 // mutation operator
 // parameters: g is genome idx.
-func (pop *SeqPop) mutate(g int) {
-	l := pop.rng.Intn(pop.Length)            // randomly determine a position
-	ri := pop.rng.Intn(len(pop.states))      // randomly find a idx of the mutated character in pop.states
-	if pop.states[ri] == pop.Genomes[g][l] { // if the mutated character is same as the old one
-		ri = ri + pop.rng.Intn(len(pop.states)-1) + 1 // then shuffle 3 positions, so that we don't need for loop.
-		if ri >= len(pop.states) {
-			ri = ri - len(pop.states)
-		}
+func (pop *SeqPop) mutate() {
+	g := randist.UniformRandomInt(pop.rng, pop.Size)   // randomly choose a genome
+	l := randist.UniformRandomInt(pop.rng, pop.Length) // randomly determine a position
+	s := randist.UniformRandomInt(pop.rng, pop.states) // randomly find a idx of the mutated character in pop.states
+	for byte(s) == pop.Genomes[g][l] {
+		s = randist.UniformRandomInt(pop.rng, pop.states)
 	}
 
 	// update the character.
-	pop.Genomes[g][l] = pop.states[ri]
+	pop.Genomes[g][l] = byte(s)
 }
 
 // transfer operator
 // parameter: g is genome idx.
-func (pop *SeqPop) transfer(g int) {
-	// randomly choose a donor
-	d := pop.rng.Intn(pop.Size)
-	for d == g {
-		d = pop.rng.Intn(pop.Size)
+func (pop *SeqPop) transfer() {
+	g := randist.UniformRandomInt(pop.rng, pop.Size) // randomly choose a receiver
+	d := randist.UniformRandomInt(pop.rng, pop.Size) // randomly choose a donor
+	for g == d {
+		d = randist.UniformRandomInt(pop.rng, pop.Size)
 	}
 
-	// randomly decide the boundaris of the transferred fragment.
-	left := pop.rng.Intn(pop.Length)
-	right := left + pop.Fragment
-	if right < pop.Length {
-		for i := left; i < right; i++ {
-			pop.Genomes[g][i] = pop.Genomes[d][i]
-		}
-	} else { // microorganizm genomes are circle.
-		for i := left; i < pop.Length; i++ {
-			pop.Genomes[g][i] = pop.Genomes[d][i]
-		}
-		for i := 0; i < right-pop.Length; i++ {
-			pop.Genomes[g][i] = pop.Genomes[d][i]
-		}
+	l := randist.UniformRandomInt(pop.rng, pop.Length) // randomly choose a left index
+	r := l + pop.Fragment                              // fragment right index
+
+	if r < pop.Length {
+		copy(pop.Genomes[g][l:r], pop.Genomes[d][l:r])
+	} else {
+		copy(pop.Genomes[g][l:pop.Length], pop.Genomes[d][l:pop.Length])
+		copy(pop.Genomes[g][0:r-pop.Length], pop.Genomes[d][0:r-pop.Length])
 	}
 }
