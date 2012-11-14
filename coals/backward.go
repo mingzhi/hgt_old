@@ -5,10 +5,7 @@ import (
 )
 
 func (w *WFPopulation) Backtrace() {
-	for {
-		if len(w.history.CurrentPool) <= 1 {
-			break
-		}
+	for len(w.history.CurrentPool) > 1 {
 		etype, etime := w.nextEvent()
 		// based on the type of event, backward
 		if etype == CoalescenceEvent {
