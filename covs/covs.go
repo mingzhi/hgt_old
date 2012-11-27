@@ -210,7 +210,7 @@ func (cm *CMatrix) CovCircle(maxL int) (scovs, rcovs, xyPL, xsysPL, smXYPL []flo
 	// calculate xyP (frequence of xy)
 	xyP := make([]float64, len(xy))
 	for i := 0; i < len(xy); i++ {
-		xyP[i] = float64(xy[i]) / float64(cm.Size*cm.Length)
+		xyP[i] = float64(xy[i]) / (float64(cm.Size) * float64(cm.Length))
 	}
 
 	xsysP := make([]float64, maxL) // <X.Y>
@@ -253,13 +253,10 @@ func (cm *CMatrix) covCirclePart(begin, end, maxL int, ch chan result) {
 	// calculate xs and xy
 	xs := make([]int, cm.Length) // total counts of each column.
 	xy := make([]int, maxL)      // total counts of cocurrence.
-	// sort each row
-	for i := begin; i < end; i++ {
-		sort.Ints(cm.Matrix[i])
-	}
 	// loop
 	for i := begin; i < end; i++ {
 		row := cm.Matrix[i]
+		sort.Ints(row)
 		for xi, xv := range row {
 			// add xs
 			xs[xv]++
