@@ -16,7 +16,8 @@ type SeqPop struct {
 
 	Genomes []Sequence // genomes
 
-	NumOfGens int // number of generations
+	NumOfGens int  // number of generations
+	ExpTime   bool // Wright-Fisher selection scaled
 
 	states int // nucleotides
 
@@ -70,6 +71,11 @@ func NewSeqPop(size, length int, mutation, transfer float64, fragment int) *SeqP
 // set seed
 func (s *SeqPop) Seed(seed int) {
 	s.rng.SetSeed(seed)
+}
+
+// set ExpTime
+func (s *SeqPop) SetExpTime(b bool) {
+	s.ExpTime = b
 }
 
 // Evolve: do one generation of population evolution, which includes:
@@ -132,6 +138,10 @@ func (pop *SeqPop) reproduce() {
 func (pop *SeqPop) manipulate() {
 	// calculate the number of events, which is poisson distribution
 	lambda := float64(pop.Size) * float64(pop.Length) * (pop.Mutation + pop.Transfer)
+	if pop.ExpTime {
+		t := randist.ExponentialRandomFloat64(pop.rng, 1.0)
+		lambda = t * lambda
+	}
 	k := randist.PoissonRandomInt(pop.rng, lambda)
 	// given k, the number of mutations or transfers are following Binormial distribution.
 	// therefore, we can do k times of Bernoulli test
