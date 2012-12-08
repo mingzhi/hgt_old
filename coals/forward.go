@@ -32,9 +32,7 @@ func (w *WFPopulation) Fortrace() (seqMap map[int][]byte) {
 			for _, a := range event.Participants {
 				seqA := seqMap[a]
 				for _, frag := range w.history.Tree[a].Genome {
-					for i := frag.Begin; i <= frag.End; i++ {
-						seqC[i] = seqA[i]
-					}
+					copy(seqC[frag.Begin:frag.End], seqA[frag.Begin:frag.End])
 				}
 				delete(seqMap, a)
 			}
