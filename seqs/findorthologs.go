@@ -104,9 +104,7 @@ func findOrthologs(s species) {
 func rbhOrthologs(genomeA, genomeB string) []string {
 	// recipctal blast
 	pair1 := blastp(genomeA, genomeB)
-	log.Printf("%s vs %s: %d\n", genomeA, genomeB, len(pair1))
 	pair2 := blastp(genomeB, genomeA)
-	log.Printf("%s vs %s: %d\n", genomeB, genomeA, len(pair2))
 
 	pairs := []string{}
 	for gene1, gene2 := range pair1 {
