@@ -26,7 +26,7 @@ var out string
 
 func init() {
 	flag.StringVar(&evalue, "evalue", "1e-5", "blast evalue cutoff")
-	flag.StringVar(&out, out, ".", "output dir")
+	flag.StringVar(&out, "out", ".", "output dir")
 
 	flag.Parse()
 }
