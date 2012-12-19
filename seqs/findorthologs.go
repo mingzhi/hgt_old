@@ -65,16 +65,37 @@ func findOrthologs(s species) {
 		log.Fatal(err)
 	}
 	defer outfile.Close()
-
-	for i := 0; i < len(s.genomes); i++ {
-		for j := i + 1; j < len(s.genomes); j++ {
-			refgenome := s.genomes[i]
-			taggenome := s.genomes[j]
-			orthologs := rbhOrthologs(refgenome, taggenome)
-			for _, pair := range orthologs {
-				outfile.WriteString(pair + "\n")
+	/*
+		for i := 0; i < len(s.genomes); i++ {
+			for j := i + 1; j < len(s.genomes); j++ {
+				refgenome := s.genomes[i]
+				taggenome := s.genomes[j]
+				orthologs := rbhOrthologs(refgenome, taggenome)
+				for _, pair := range orthologs {
+					outfile.WriteString(pair + "\n")
+				}
 			}
 		}
+	*/
+	orthologmap := make(map[string][]string)
+	refgenome := s.genomes[0]
+	for i := 1; i < len(s.genomes); i++ {
+		taggenome := s.genomes[i]
+		orthologs := rbhOrthologs(refgenome, taggenome)
+		for _, pair := range orthologs {
+			parts := strings.Split(pair, " ")
+			a := parts[0]
+			b := parts[1]
+			genes, found := orthologmap[a]
+			if !found {
+				genes = []string{}
+			}
+			genes = append(genes, b)
+			orthologmap[a] = genes
+		}
+	}
+	for refgen, orthologs := range orthologmap {
+		outfile.WriteString(refgen + " " + strings.Join(orthologs, " ") + "\n")
 	}
 
 	log.Printf("Done finding orthologs: %s\n", s.name)
