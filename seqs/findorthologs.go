@@ -120,7 +120,7 @@ func rbhOrthologs(genomeA, genomeB string) []string {
 
 // blastp to find the best hit
 func blastp(db, query string) map[string]string {
-	cmd := exec.Command("blastp", "-db", db, "-query", query, "-outfmt", "6 qseqid sseqid evalue", "-evalue", evalue)
+	cmd := exec.Command("blastp", "-db", db, "-query", query, "-outfmt", "6 sseqid qseqid evalue", "-evalue", evalue)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatal(err)
